@@ -38,34 +38,36 @@ import random
 import time
 import sys
 import platform
+from dataclasses import dataclass
+from typing import List
 
 
-__version__ = '1.4.0'
+__version__ = '1.4.1'
 
+@dataclass
 class GPU:
-    def __init__(self, ID, uuid, load, memoryTotal, memoryUsed, memoryFree, driver, gpu_name, serial, display_mode, display_active, temp_gpu):
-        self.id = ID
-        self.uuid = uuid
-        self.load = load
-        self.memoryUtil = float(memoryUsed)/float(memoryTotal)
-        self.memoryTotal = memoryTotal
-        self.memoryUsed = memoryUsed
-        self.memoryFree = memoryFree
-        self.driver = driver
-        self.name = gpu_name
-        self.serial = serial
-        self.display_mode = display_mode
-        self.display_active = display_active
-        self.temperature = temp_gpu
+    id: int
+    uuid: str
+    load: float
+    memoryUtil: float
+    memoryTotal: float
+    memoryUsed: float
+    memoryFree: float
+    driver: str
+    name: str
+    serial: str
+    display_mode: str
+    display_active: str
+    temperature: str
 
-def safeFloatCast(strNumber):
+def safeFloatCast(strNumber: str) -> float:
     try:
         number = float(strNumber)
     except ValueError:
         number = float('nan')
     return number
 
-def getGPUs():
+def getGPUs() -> List[GPU]:
     if platform.system() == "Windows":
         # If the platform is Windows and nvidia-smi 
         # could not be found from the environment path, 
@@ -121,12 +123,36 @@ def getGPUs():
             elif (i == 10):
                 display_mode = vals[i]
             elif (i == 11):
-                temp_gpu = safeFloatCast(vals[i]);
-        GPUs.append(GPU(deviceIds, uuid, gpuUtil, memTotal, memUsed, memFree, driver, gpu_name, serial, display_mode, display_active, temp_gpu))
-    return GPUs  # (deviceIds, gpuUtil, memUtil)
+                temp_gpu = safeFloatCast(vals[i])
+        GPUs.append(
+            GPU(
+                deviceIds,
+                uuid,
+                gpuUtil,
+                float(memUsed)/float(memTotal),
+                memTotal,
+                memUsed,
+                memFree,
+                driver,
+                gpu_name,
+                serial,
+                display_mode,
+                display_active,
+                temp_gpu
+            )
+        )
+    return GPUs
 
-
-def getAvailable(order = 'first', limit=1, maxLoad=0.5, maxMemory=0.5, memoryFree=0, includeNan=False, excludeID=[], excludeUUID=[]):
+def getAvailable(
+    order: str='first',
+    limit: int=1,
+    maxLoad: float=0.5,
+    maxMemory: float=0.5,
+    memoryFree: float=0,
+    includeNan: bool=False,
+    excludeID: list=[],
+    excludeUUID: list=[]
+) -> List[int]:
     # order = first | last | random | load | memory
     #    first --> select the GPU with the lowest ID (DEFAULT)
     #    last --> select the GPU with the highest ID
@@ -172,7 +198,15 @@ def getAvailable(order = 'first', limit=1, maxLoad=0.5, maxMemory=0.5, memoryFre
 #        if (GPUs[i].load < maxLoad or (includeNan and np.isnan(GPUs[i].load))) and (GPUs[i].memoryUtil < maxMemory  or (includeNan and np.isnan(GPUs[i].memoryUtil))):
 #            GPUavailability[i] = 1
 
-def getAvailability(GPUs, maxLoad=0.5, maxMemory=0.5, memoryFree=0, includeNan=False, excludeID=[], excludeUUID=[]):
+def getAvailability(
+    GPUs: List[GPU],
+    maxLoad: float=0.5,
+    maxMemory: float=0.5,
+    memoryFree: float=0,
+    includeNan: bool=False,
+    excludeID: list=[],
+    excludeUUID: list=[]
+):
     # Determine, which GPUs are available
     GPUavailability = [1 if (gpu.memoryFree>=memoryFree) and (gpu.load < maxLoad or (includeNan and math.isnan(gpu.load))) and (gpu.memoryUtil < maxMemory  or (includeNan and math.isnan(gpu.memoryUtil))) and ((gpu.id not in excludeID) and (gpu.uuid not in excludeUUID)) else 0 for gpu in GPUs]
     return GPUavailability
@@ -206,7 +240,11 @@ def getFirstAvailable(order = 'first', maxLoad=0.5, maxMemory=0.5, attempts=1, i
     return available
 
 
-def showUtilization(all=False, attrList=None, useOldCode=False):
+def showUtilization(
+    all: bool=False,
+    attrList: bool=None,
+    useOldCode: bool=False
+):
     GPUs = getGPUs()
     if (all):
         if (useOldCode):
@@ -265,10 +303,10 @@ def showUtilization(all=False, attrList=None, useOldCode=False):
                         elif (isinstance(attr,int)):
                             attrStr = ('{0:d}').format(attr)
                         elif (isinstance(attr,str)):
-                            attrStr = attr;
-                        elif  (sys.version_info[0] == 2):
+                            attrStr = attr
+                        elif (sys.version_info[0] == 2):
                             if (isinstance(attr,unicode)):
-                                attrStr = attr.encode('ascii','ignore')
+                                attrStr = attr.encode('ascii', 'ignore')
                         else:
                             raise TypeError('Unhandled object type (' + str(type(attr)) + ') for attribute \'' + attrDict['name'] + '\'')
                                             
